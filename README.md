@@ -172,7 +172,7 @@ ocr-adapter:
 ```yaml
 services:
   openai-ocr-server:
-    image: openai-ocr-server:0.1.0
+    image: openai-ocr-server:0.2.0
     volumes:
       - ocr-models:/models
 
