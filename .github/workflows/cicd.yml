@@ -23,7 +23,7 @@ jobs:
     - name: Set up Python (actions/setup-python)
       uses: actions/setup-python@v7
       with:
-        python-version: '3.13'
+        python-version: '3.14'
         cache: 'pip'
 
     - name: Install pip dependencies
@@ -43,7 +43,7 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        python-version: ['3.13']
+        python-version: ['3.14']
 
     steps:
     - name: Checkout (actions/checkout)
@@ -105,7 +105,7 @@ jobs:
     - name: Set up Python (actions/setup-python)
       uses: actions/setup-python@v7
       with:
-        python-version: '3.13'
+        python-version: '3.14'
         cache: 'pip'
 
     - name: Set up Docker Buildx (docker/setup-buildx-action)

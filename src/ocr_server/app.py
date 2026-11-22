@@ -201,7 +201,7 @@ def create_app(
         b64 = data_url[len(prefix) :]
         try:
             raw = base64.b64decode(b64, validate=True)
-        except (ValueError, binascii.Error):
+        except ValueError, binascii.Error:
             raise OCRError("invalid base64 image data", 422, "unprocessable")
         try:
             with BytesIO(raw) as buf:
@@ -262,7 +262,7 @@ def create_app(
 
         try:
             data = json.loads(body)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             raise OCRError("invalid JSON body", 400, "invalid_request")
         if not isinstance(data, dict):
             raise OCRError("request body must be a JSON object", 400, "invalid_request")
