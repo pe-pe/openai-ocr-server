@@ -11,6 +11,7 @@ from ocr_server.backend import IndraBackend, RapidDocBackend, create_backend
 
 class FakeRapidDoc:
     instance = None
+    markdown = "# RapidDoc OCR"
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
@@ -20,7 +21,7 @@ class FakeRapidDoc:
     def __call__(self, inputs):
         data = inputs.read()
         self.received = (inputs.name, data)
-        return SimpleNamespace(markdown="# RapidDoc OCR")
+        return SimpleNamespace(markdown=FakeRapidDoc.markdown)
 
 
 class FakeIndraLoader:
@@ -100,7 +101,7 @@ def test_rapid_doc_load_configures_engine(monkeypatch, tmp_path):
     assert engine.kwargs["formula_enable"] is False
     assert engine.kwargs["table_enable"] is False
     assert engine.kwargs["preload_model"] is False
-    assert engine.kwargs["image_output_mode"] == "data_uri"
+    assert engine.kwargs["image_output_mode"] == "url"
     assert os.environ["RAPID_MODELS_DIR"] == str(model_dir)
     assert os.environ["MINERU_DEVICE_MODE"] == "cuda:0"
     assert os.environ["USE_DOC_ORIENTATION_CLASSIFY"] == "true"
@@ -142,6 +143,15 @@ def test_rapid_doc_infer_returns_markdown(monkeypatch):
     assert data.startswith(b"\x89PNG")
     assert result.text == "# RapidDoc OCR"
     assert result.markdown == "# RapidDoc OCR"
+
+
+def test_rapid_doc_image_output_mode_passes_through(monkeypatch):
+    _install_fake_rapid_doc(monkeypatch)
+
+    backend = RapidDocBackend()
+    backend.load(None, {"image_output_mode": "data_uri", "preload": False})
+
+    assert FakeRapidDoc.instance.kwargs["image_output_mode"] == "data_uri"
 
 
 def test_rapid_doc_infer_before_load_raises():

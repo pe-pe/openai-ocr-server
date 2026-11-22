@@ -35,7 +35,7 @@ models:
       parse_method: auto             # auto, txt or ocr
       formula_enable: true
       table_enable: true
-      image_output_mode: data_uri    # embed extracted figures in Markdown
+      image_output_mode: url          # keep relative image links (no base64)
 concurrency: 2                 # simultaneous page inference
 engine_threads: 1              # CPU threads bound per Indra engine instance
 page_timeout_s: 180            # per-page inference deadline
@@ -81,7 +81,7 @@ Supported `config` keys:
 | `parse_method` | `auto` | `auto`, `txt` or `ocr`. Image inputs have no text layer, so `auto` selects OCR. |
 | `formula_enable` | `true` | Enable formula recognition. Disable to reduce model downloads and startup time. |
 | `table_enable` | `true` | Enable table recognition. Disable to reduce model downloads and startup time. |
-| `image_output_mode` | `data_uri` | `data_uri` embeds extracted figures in the returned Markdown; `url` leaves relative image links. |
+| `image_output_mode` | `url` | `url` keeps relative image links; `data_uri` embeds figures as base64 data URIs. |
 | `layout` | `{}` | RapidDoc `layout_config` overrides, e.g. `model_type` or `model_dir_or_path`. |
 | `ocr` | `{}` | RapidDoc `ocr_config` overrides for the underlying RapidOCR models. |
 | `formula` | `{}` | RapidDoc `formula_config` overrides. |
@@ -91,6 +91,10 @@ Supported `config` keys:
 | `device` | `cpu` | Exported as `MINERU_DEVICE_MODE` before import (for example `cuda:0`). |
 | `orientation` | `false` | Exported as `USE_DOC_ORIENTATION_CLASSIFY` to correct rotated pages. |
 | `preload` | `true` | Load the RapidDoc pipeline during startup instead of on first request. |
+
+The default `image_output_mode: url` keeps responses small: RapidDoc emits
+relative image links instead of embedding figures. Use `data_uri` only when
+figures must be self-contained, because responses can grow by megabytes.
 
 RapidDoc uses one process-wide model cache, so `RAPID_MODELS_DIR` is shared by
 all RapidDoc models in the process. RapidDoc inference is serialized across

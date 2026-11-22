@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an opt-in RapidDoc end-to-end test (`OCR_E2E_RAPID_DOC=1`, enabled in CI).
 
 ### Changed
+- RapidDoc defaults to `image_output_mode: url`, so responses keep relative
+  image links instead of embedding figures as base64 data URIs.
 - The Indra backend name is `indra-ocr`, matching its model ID and
   `/models/indra-ocr` path.
 - `EXPOSE` in the Dockerfile now derives from the `PORT` build-time env value

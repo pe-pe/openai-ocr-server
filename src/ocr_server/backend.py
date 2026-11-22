@@ -157,7 +157,7 @@ class RapidDocBackend(Backend):
             formula_enable=bool(config.get("formula_enable", True)),
             table_enable=bool(config.get("table_enable", True)),
             lang=str(config.get("lang", "en")),
-            image_output_mode=str(config.get("image_output_mode", "data_uri")),
+            image_output_mode=str(config.get("image_output_mode", "url")),
             preload_model=bool(config.get("preload", True)),
         )
         self._ready = True

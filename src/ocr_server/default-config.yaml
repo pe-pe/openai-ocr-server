@@ -12,7 +12,7 @@ models:
       parse_method: auto
       formula_enable: true
       table_enable: true
-      image_output_mode: data_uri
+      image_output_mode: url
 concurrency: 2
 engine_threads: 1
 page_timeout_s: 180

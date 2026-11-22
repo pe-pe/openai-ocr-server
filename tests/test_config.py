@@ -76,6 +76,7 @@ def test_load_config_defaults_when_env_missing(monkeypatch):
     assert cfg.models[1].backend == "rapid-doc"
     assert cfg.models[1].model_path == "/models/rapid-doc"
     assert cfg.models[1].config["lang"] == "en"
+    assert cfg.models[1].config["image_output_mode"] == "url"
     assert cfg.concurrency == 2
     assert cfg.engine_threads == 1
     assert cfg.page_timeout_s == 180.0
