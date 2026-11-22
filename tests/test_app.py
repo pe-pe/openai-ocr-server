@@ -76,7 +76,7 @@ def test_chat_completions_returns_ocr_text(client, png_data_url):
     body = r.json()
     assert body["object"] == "chat.completion"
     assert body["model"] == "fake-ocr"
-    assert body["created"] == 0
+    assert isinstance(body["created"], int) and body["created"] > 0
     assert body["choices"][0]["index"] == 0
     assert body["choices"][0]["message"]["role"] == "assistant"
     assert body["choices"][0]["message"]["content"] == "fake ocr text"

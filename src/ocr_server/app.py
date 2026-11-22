@@ -68,37 +68,88 @@ def create_app(
         from .config import load_config
 
         config = load_config()
+
     registry = registry or ModelRegistry(config)
 
     semaphore = asyncio.Semaphore(config.concurrency)
+    active_requests = 0
+    active_requests_lock = asyncio.Lock()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         # Start eager model loading in the background so the port opens
         # immediately; /health reports non-200 until loading finishes.
-        asyncio.create_task(registry.load_all())
-        yield
+        load_task = asyncio.create_task(registry.load_all())
+        try:
+            yield
+        finally:
+            # Graceful shutdown: wait for in-flight requests to complete
+            logger.info("shutdown_started waiting_for_inflight_requests")
+            # Wait for model loading to complete first
+            try:
+                await load_task
+            except Exception:
+                logger.exception("model_loading_failed_during_shutdown")
+
+            # Wait for active requests to drain (with timeout)
+            shutdown_timeout = 30.0  # seconds
+            start_time = time.monotonic()
+            while True:
+                async with active_requests_lock:
+                    if active_requests == 0:
+                        break
+                    remaining = active_requests
+                elapsed = time.monotonic() - start_time
+                if elapsed >= shutdown_timeout:
+                    logger.warning(
+                        "shutdown_timeout active_requests=%d elapsed=%.1fs",
+                        remaining,
+                        elapsed,
+                    )
+                    break
+                logger.info("shutdown_waiting active_requests=%d elapsed=%.1fs", remaining, elapsed)
+                await asyncio.sleep(0.5)
+
+            # Also wait for semaphore to be fully released (all permits available)
+            # This ensures no inference is running in the thread pool
+            while semaphore._value < config.concurrency:  # type: ignore[attr-defined]
+                elapsed = time.monotonic() - start_time
+                if elapsed >= shutdown_timeout:
+                    logger.warning("shutdown_timeout waiting_for_semaphore")
+                    break
+                await asyncio.sleep(0.1)
+
+            logger.info("shutdown_complete")
 
     app = FastAPI(title="openai-ocr-server", docs_url=None, redoc_url=None, lifespan=lifespan)
 
     @app.middleware("http")
     async def _request_tracking(request: Request, call_next):
+        nonlocal active_requests
         request.state.request_id = str(uuid.uuid4())
         request.state.backend = None
+        async with active_requests_lock:
+            active_requests += 1
         start = time.perf_counter()
-        response = await call_next(request)
-        ms = (time.perf_counter() - start) * 1000
-        logger.info(
-            "request_id=%s method=%s path=%s status=%s backend=%s ms=%.1f",
-            request.state.request_id,
-            request.method,
-            request.url.path,
-            response.status_code,
-            request.state.backend or "-",
-            ms,
-        )
-        response.headers["X-Request-ID"] = request.state.request_id
-        return response
+        response = None
+        try:
+            response = await call_next(request)
+            return response
+        finally:
+            async with active_requests_lock:
+                active_requests -= 1
+            ms = (time.perf_counter() - start) * 1000
+            logger.info(
+                "request_id=%s method=%s path=%s status=%s backend=%s ms=%.1f",
+                request.state.request_id,
+                request.method,
+                request.url.path,
+                getattr(response, "status_code", 0),
+                request.state.backend or "-",
+                ms,
+            )
+            if response is not None and hasattr(response, "headers"):
+                response.headers["X-Request-ID"] = request.state.request_id
 
     @app.exception_handler(OCRError)
     async def _handle_ocr_error(request: Request, exc: OCRError):
@@ -153,8 +204,9 @@ def create_app(
         except (ValueError, binascii.Error):
             raise OCRError("invalid base64 image data", 422, "unprocessable")
         try:
-            image = Image.open(BytesIO(raw))
-            image.load()
+            with BytesIO(raw) as buf:
+                image = Image.open(buf)
+                image.load()
         except UnidentifiedImageError:
             raise OCRError("invalid PNG image", 422, "unprocessable")
         width, height = image.size
@@ -233,7 +285,7 @@ def create_app(
         return {
             "id": f"chatcmpl-{rid}",
             "object": "chat.completion",
-            "created": 0,
+            "created": int(time.time()),
             "model": model_id,
             "choices": [
                 {

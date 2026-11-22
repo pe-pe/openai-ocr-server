@@ -1,10 +1,7 @@
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    OMP_NUM_THREADS=1 \
-    OPENBLAS_NUM_THREADS=1 \
-    MKL_NUM_THREADS=1
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 RUN pip install --no-cache-dir --upgrade pip

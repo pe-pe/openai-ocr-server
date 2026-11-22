@@ -7,7 +7,6 @@ output into a common :class:`OCRResult`.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -43,11 +42,6 @@ class IndraBackend(Backend):
         from indra_ocr import load
 
         threads = int(config.get("threads", 1))
-        # Bind Indra/onnxruntime internal CPU threads so the engine does not
-        # oversubscribe the host alongside the asyncio semaphore concurrency.
-        os.environ["OMP_NUM_THREADS"] = str(threads)
-        os.environ["OPENBLAS_NUM_THREADS"] = str(threads)
-        os.environ["MKL_NUM_THREADS"] = str(threads)
         converter = load(
             path=model_path,
             threads=threads,
