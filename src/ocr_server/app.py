@@ -85,14 +85,17 @@ def create_app(
         finally:
             # Graceful shutdown: wait for in-flight requests to complete
             logger.info("shutdown_started waiting_for_inflight_requests")
-            # Wait for model loading to complete first
+            # Cancel model loading if still in progress (don't wait for HF downloads)
+            load_task.cancel()
             try:
                 await load_task
+            except asyncio.CancelledError:
+                logger.info("model_loading_cancelled_during_shutdown")
             except Exception:
                 logger.exception("model_loading_failed_during_shutdown")
 
             # Wait for active requests to drain (with timeout)
-            shutdown_timeout = 30.0  # seconds
+            shutdown_timeout = 3.0  # seconds
             start_time = time.monotonic()
             while True:
                 async with active_requests_lock:
