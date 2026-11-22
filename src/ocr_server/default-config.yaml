@@ -1,0 +1,20 @@
+models:
+  - id: indra-ocr
+    backend: indra-ocr
+    model_path: /models/indra-ocr
+    config:
+      threads: 1
+  - id: rapid-doc
+    backend: rapid-doc
+    model_path: /models/rapid-doc
+    config:
+      lang: en
+      parse_method: auto
+      formula_enable: true
+      table_enable: true
+      image_output_mode: data_uri
+concurrency: 2
+engine_threads: 1
+page_timeout_s: 180
+max_body_mb: 100
+max_image_pixels: 50000000

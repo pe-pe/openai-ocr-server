@@ -4,7 +4,7 @@
 
 `openai-ocr-server` is a self-hosted OCR inference service with an
 OpenAI-compatible chat-completions API. It lets clients submit images or PDFs
-and use CPU-oriented OCR engines such as Indra OCR or PaddleOCR without
+and use CPU-oriented OCR engines such as Indra OCR or RapidDoc without
 implementing a separate client for each engine.
 
 The initial integration target is `librechat-ocr-adapter`. The OCR server
@@ -23,7 +23,7 @@ librechat-ocr-adapter
 openai-ocr-server
     | backend interface
     +-- Indra OCR
-    +-- PaddleOCR
+    +-- RapidDoc
     +-- other...
 ```
 
@@ -83,10 +83,9 @@ core if there is a client need for it.
 
 The request's `model` selects an installed model from the server's model
 registry. Each public model ID maps to a backend and its local model
-configuration, for example `indra-ocr` or a `paddleocr`. The server
-must reject unknown model IDs explicitly rather than silently falling back to
-a default. Implement `GET /v1/models` to list the model IDs available for
-requests.
+configuration, for example `indra-ocr` or `rapid-doc`. The server must reject
+unknown model IDs explicitly rather than silently falling back to a default.
+Implement `GET /v1/models` to list the model IDs available for requests.
 
 The adapter currently sends the single model name configured by its
 `OCR_MODEL` setting, so that adapter instance uses one selected model. Other
@@ -122,11 +121,10 @@ assistant message content. Echo the selected model ID in the response:
 ```
 
 The adapter reads `choices[0].message.content`; it does not need token usage
-fields. For engines such as PaddleOCR that return recognized lines, boxes, and
-confidence values, the backend adapter should order the lines and convert them
-to plain text or Markdown before returning the completion. For a multi-page
-PDF or multiple images, preserve page order and separate page output clearly,
-for example with `## Page 1` headings.
+fields. RapidDoc returns Markdown with layout-ordered text and optional formula
+and table output; the backend adapter normalizes that native output into the
+completion content. For a multi-page PDF or multiple images, preserve page
+order and separate page output clearly, for example with `## Page 1` headings.
 
 ### Health
 
@@ -159,11 +157,10 @@ mapping. The document layer is responsible for PDF rendering and page
 ordering. The backend layer is responsible for model-specific preprocessing,
 inference, and conversion of native output into a common OCR result.
 
-Indra accepts an in-memory image; PaddleOCR also accepts image input. The
-server can decode the incoming PNG into an image array or a temporary image
-file as required by the selected engine. Backend-specific dependencies and
-model loading should remain isolated so adding an engine does not change the
-OpenAI API contract.
+Indra accepts an in-memory image; RapidDoc accepts a document path or byte
+stream. The server encodes each page image as a PNG byte stream for RapidDoc.
+Backend-specific dependencies and model loading should remain isolated so
+adding an engine does not change the OpenAI API contract.
 
 ## Runtime and concurrency
 
@@ -171,6 +168,9 @@ OpenAI API contract.
 - Register every configured model ID at startup. Model weights may be loaded
   at startup or lazily on first use, then reused; make the choice explicit
   because keeping all models resident uses more RAM.
+- RapidDoc keeps a process-wide model cache and is not documented as
+  thread-safe, so its inference is serialized across RapidDoc model instances.
+  Other backends may run concurrently up to the configured limit.
 - Run CPU-bound inference outside the asynchronous HTTP event loop.
 - Make request concurrency configurable and start conservatively. Bound both
   simultaneous page inference and each engine's internal CPU threads to avoid
@@ -179,6 +179,13 @@ OpenAI API contract.
   or backend failure; do not return an empty, success-shaped OCR result.
 - Keep model assets available locally in the image or a mounted volume so
   container recreation and model switching do not require downloads.
+
+The embedded `default-config.yaml` registers an `indra-ocr` model and a
+`rapid-doc` model (`lang: en`). Both use `/models` as their model root; the
+server creates the directory and downloads missing weights when it is empty,
+so a writable `/models` volume is the normal deployment. If the configured
+directory cannot be created or written, the backend falls back to its default
+cache.
 
 ## Security
 
@@ -197,13 +204,20 @@ OpenAI API contract.
 ## Container integration
 
 Run the OCR server and `librechat-ocr-adapter` on the same private Docker
-network. Configure the adapter to use the OCR server's service name and port:
+network. Mount a writable model directory so first-run downloads persist:
 
 ```yaml
+openai-ocr-server:
+  volumes:
+    - ocr-models:/models
+
 ocr-adapter:
   environment:
     OCR_VLLM_URL: http://openai-ocr-server:8000
     OCR_MODEL: indra-ocr
+
+volumes:
+  ocr-models:
 ```
 
 The `OCR_VLLM_URL` name is retained for compatibility with the current
@@ -219,7 +233,7 @@ the adapter.
 - OpenAI-compatible, non-streaming `POST /v1/chat/completions`.
 - Single-image, multiple-image, and PDF file-part requests.
 - Ordered, page-separated text/Markdown for multi-page inputs.
-- CPU backends behind a common interface, initially Indra OCR and PaddleOCR.
+- CPU backends behind a common interface, initially Indra OCR and RapidDoc.
 - Multiple locally installed model choices, selected by the request's `model`
   field, with `GET /v1/models` discovery.
 - Configurable CPU concurrency.

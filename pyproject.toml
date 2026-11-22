@@ -14,8 +14,9 @@ dependencies = [
     "pydantic>=2.14",
     "pydantic-settings>=2.16",
     "PyYAML>=6.0",
-    "Pillow>=13.0",
+    "Pillow>=11.0",
     "indra-ocr>=1.1",
+    "rapid-doc[cpu]>=0.9.12",
     "numpy>=2.5",
 ]
 
@@ -28,6 +29,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+ocr_server = ["default-config.yaml"]
 
 [tool.ruff]
 line-length = 100

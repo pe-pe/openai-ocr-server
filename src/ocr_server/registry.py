@@ -1,7 +1,7 @@
 """Model registry: model_id -> warm backend instance.
 
-Every configured model ID is registered at startup and its Indra engine is
-loaded eagerly so inference can run immediately once the server is up.
+Every configured model ID is registered at startup and its backend is loaded
+eagerly so inference can run immediately once the server is up.
 """
 
 from __future__ import annotations

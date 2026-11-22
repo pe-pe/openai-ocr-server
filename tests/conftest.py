@@ -29,7 +29,7 @@ class FakeBackend(Backend):
 @pytest.fixture
 def config():
     return ServerConfig(
-        models=[ModelConfig(id="fake-ocr", backend="indra", model_path=None, config={})],
+        models=[ModelConfig(id="fake-ocr", backend="indra-ocr", model_path=None, config={})],
         concurrency=2,
         engine_threads=1,
         page_timeout_s=5,

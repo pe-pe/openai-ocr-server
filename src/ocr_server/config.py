@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from importlib import resources
 from typing import Any
 
 import yaml
@@ -11,7 +12,7 @@ from pydantic import BaseModel, field_validator
 
 class ModelConfig(BaseModel):
     id: str
-    backend: str = "indra"
+    backend: str = "indra-ocr"
     model_path: str | None = None
     config: dict[str, Any] = {}
 
@@ -54,19 +55,16 @@ class ServerConfig(BaseModel):
 
 
 def _default_config() -> ServerConfig:
-    """Sensible defaults when OPENAI_OCR_SERVER_CONFIG is not set.
+    """Load the embedded default-config.yaml.
 
-    A single indra-ocr model with no model_path lets Indra download its default
-    weights on first load (cached by huggingface_hub).
+    The default config registers an Indra OCR model and a RapidDoc model and
+    stores their weights under the conventional /models volume.
     """
-    return ServerConfig(
-        models=[ModelConfig(id="indra-ocr", backend="indra", model_path=None, config={})],
-        concurrency=2,
-        engine_threads=1,
-        page_timeout_s=180.0,
-        max_body_mb=100,
-        max_image_pixels=50_000_000,
-    )
+    raw = resources.files("ocr_server").joinpath("default-config.yaml").read_text(encoding="utf-8")
+    data = yaml.safe_load(raw)
+    if not isinstance(data, dict):
+        raise TypeError("default-config.yaml must contain a YAML mapping")
+    return ServerConfig.model_validate(data)
 
 
 def load_config() -> ServerConfig:
