@@ -16,4 +16,4 @@ ENV OPENAI_OCR_SERVER_CONFIG="" \
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn ocr_server.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "exec uvicorn ocr_server.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000}"]
